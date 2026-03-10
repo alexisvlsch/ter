@@ -8,7 +8,9 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/ter-realm
+          # jwk-set-uri : Keycloak n'est contacté qu'à la première requête JWT (lazy)
+          # issuer-uri  : Keycloak est contacté au démarrage (échoue si Keycloak absent)
+          jwk-set-uri: http://localhost:8080/realms/ter-realm/protocol/openid-connect/certs
 
 logging:
   level:
