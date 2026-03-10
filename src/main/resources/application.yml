@@ -8,9 +8,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          # Use jwk-set-uri so Keycloak is only contacted on first JWT request (lazy).
-          # Switch to issuer-uri if you want startup validation (fails if Keycloak is absent).
-          jwk-set-uri: http://localhost:8080/realms/ter-realm/protocol/openid-connect/certs
+          # Use issuer-uri so Spring Boot auto-discovers the JWKS URL via OpenID Connect Discovery
+          # and also validates the `iss` claim. Keycloak must be running before Spring Boot starts.
           issuer-uri: http://localhost:8080/realms/ter-realm
 
 logging:
