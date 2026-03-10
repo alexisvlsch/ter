@@ -1,36 +1,31 @@
 package com.example.resourceserver.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
-/**
- * Security configuration for the resource server.
- *
- * <ul>
- *   <li>{@code /api/public/**} — no authentication required</li>
- *   <li>{@code /api/medical/**} — valid JWT + realm role {@code NURSE} required</li>
- *   <li>All other requests — authenticated JWT required</li>
- * </ul>
- */
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final KeycloakJwtAuthConverter keycloakJwtAuthConverter;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // CSRF protection is disabled intentionally: this is a stateless REST resource
-            // server that authenticates via Bearer JWT tokens in the Authorization header.
-            // CSRF attacks rely on cookies being automatically sent by browsers; since this
-            // API uses Authorization headers (not cookies), it is not vulnerable to CSRF.
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -41,6 +36,28 @@ public class SecurityConfig {
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtAuthConverter))
+                .authenticationEntryPoint((request, response, authException) -> {
+                    // 401 — token absent ou invalide
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    Map<String, Object> body = new LinkedHashMap<>();
+                    body.put("timestamp", Instant.now().toString());
+                    body.put("status",    401);
+                    body.put("error",     "Unauthorized");
+                    body.put("message",   "Token absent ou invalide : " + authException.getMessage());
+                    response.getWriter().write(objectMapper.writeValueAsString(body));
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    // 403 — token valide mais rôle insuffisant
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    Map<String, Object> body = new LinkedHashMap<>();
+                    body.put("timestamp", Instant.now().toString());
+                    body.put("status",    403);
+                    body.put("error",     "Forbidden");
+                    body.put("message",   "Accès refusé — rôle insuffisant ou hors plage horaire");
+                    response.getWriter().write(objectMapper.writeValueAsString(body));
+                })
             );
 
         return http.build();
