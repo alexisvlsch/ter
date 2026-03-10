@@ -16,7 +16,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 // Route publique, pas de token nécessaire
-                .requestMatchers("/public/**").permitAll()
+                .requestMatchers("/public/**", "/error").permitAll()
                 // Tout le reste nécessite un JWT valide
                 .anyRequest().authenticated()
             )
