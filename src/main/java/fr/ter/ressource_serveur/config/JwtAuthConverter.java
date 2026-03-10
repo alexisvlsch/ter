@@ -22,6 +22,10 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
         Collection<GrantedAuthority> defaultAuthorities = defaultConverter.convert(jwt);
+        // Protection contre le null : JwtGrantedAuthoritiesConverter peut retourner null
+        if (defaultAuthorities == null) {
+            defaultAuthorities = Collections.emptyList();
+        }
         Collection<GrantedAuthority> keycloakRoles = extractKeycloakRoles(jwt);
 
         Collection<GrantedAuthority> allAuthorities = Stream
