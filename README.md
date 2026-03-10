@@ -84,6 +84,80 @@ Onglet **Role Mappings** → **Realm Roles** → assigner **`NURSE`** à Alice.
 
 ## Lancement du serveur
 
+### Prérequis au démarrage
+
+Spring Boot utilise `issuer-uri` dans `application.yml` :
+
+```yaml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/ter-realm
+```
+
+À chaque requête JWT, Spring Boot contacte automatiquement :
+
+```
+http://localhost:8080/realms/ter-realm/.well-known/openid-configuration
+```
+
+**⚠️ Keycloak doit donc être en ligne et ce endpoint doit répondre `200 OK` avec un JSON valide avant d'envoyer des requêtes JWT.**
+
+#### Vérification manuelle du endpoint OIDC
+
+Avant de lancer le serveur, vérifie que Keycloak répond :
+
+```bash
+curl -s http://localhost:8080/realms/ter-realm/.well-known/openid-configuration | jq .
+```
+
+Le résultat doit être un objet JSON contenant au minimum les champs `issuer`, `jwks_uri` et `token_endpoint`. Si la commande retourne une erreur ou un HTML, Keycloak n'est pas correctement démarré.
+
+Sur Windows (PowerShell) :
+
+```powershell
+Invoke-RestMethod "http://localhost:8080/realms/ter-realm/.well-known/openid-configuration"
+```
+
+#### Logs à surveiller au démarrage
+
+Au démarrage, le serveur effectue automatiquement une vérification de disponibilité de Keycloak et affiche l'un des messages suivants :
+
+- **Keycloak disponible** :
+  ```
+  INFO  KeycloakHealthCheck - ✅ Keycloak est disponible et répond correctement (HTTP 200) sur : http://localhost:8080/realms/ter-realm/.well-known/openid-configuration
+  ```
+
+- **Keycloak indisponible** (le serveur démarre quand même, mais les requêtes JWT échoueront) :
+  ```
+  WARN  KeycloakHealthCheck - ⚠️  Impossible de joindre Keycloak sur : http://localhost:8080/realms/ter-realm/.well-known/openid-configuration
+  WARN  KeycloakHealthCheck -    → Le serveur Spring Boot va démarrer, mais toute requête avec un JWT échouera tant que Keycloak ne sera pas disponible.
+  WARN  KeycloakHealthCheck -    → Vérifiez que Keycloak est démarré sur http://localhost:8080 et que le realm 'ter-realm' existe.
+  ```
+
+- **Realm manquant ou mauvais chemin** (Keycloak répond mais avec une erreur HTTP) :
+  ```
+  WARN  KeycloakHealthCheck - ⚠️  Keycloak a répondu avec le code HTTP 404 sur : http://localhost:8080/realms/ter-realm/.well-known/openid-configuration.
+  WARN  KeycloakHealthCheck -    Assurez-vous que le realm 'ter-realm' existe et que Keycloak est bien configuré.
+  ```
+
+#### Erreur courante si Keycloak est absent
+
+Si tu envoies une requête JWT sans que Keycloak soit disponible, Spring Boot retourne :
+
+```
+JwtDecoderInitializationException: Failed to lazily resolve the supplied JwtDecoder instance
+Caused by: IllegalArgumentException: Unable to resolve the Configuration with the provided Issuer of "http://localhost:8080/realms/ter-realm"
+```
+
+**Solution** : démarrer Keycloak, vérifier le endpoint OIDC, puis relancer la requête.
+
+---
+
+### Démarrer le serveur
+
 ```powershell
 # Windows — PowerShell
 $env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot"
