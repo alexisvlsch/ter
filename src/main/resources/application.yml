@@ -1,0 +1,25 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: ter-resource-server
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Use jwk-set-uri so Keycloak is only contacted on first JWT request (lazy).
+          # Switch to issuer-uri if you want startup validation (fails if Keycloak is absent).
+          jwk-set-uri: http://localhost:8080/realms/ter-realm/protocol/openid-connect/certs
+          issuer-uri: http://localhost:8080/realms/ter-realm
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.example.resourceserver: DEBUG
+
+# Working-hours window for /api/medical/contextual
+access:
+  window:
+    start: "08:00"
+    end: "18:00"
